@@ -1,0 +1,58 @@
+name: 创建订单-正常单商品
+# 目的：正常下单主流程，接口成功 + 数据库三张表状态一致（orders / order_items / inventory）
+setup:
+  - template: user
+    var: user_id
+  - template: product            # 库存 10、单价 50.00（价格固定以便断言金额）
+    var: product_id
+    price: 50.00
+    stock: 10
+    status: ON_SALE
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items:
+      - product_id: "${product_id}"
+        quantity: 3
+extract:
+  order_id: $.data.id
+assertions:
+  - type: status_eq              # 接口成功
+    expected: 200
+  - type: json_eq
+    path: $.code
+    expected: 0
+  - type: json_eq
+    path: $.data.status
+    expected: PENDING
+  - type: json_eq                # 总金额 = 50.00 * 3
+    path: $.data.total_amount
+    expected: 150.0
+  - type: json_eq                # 返回结果里带订单 ID
+    path: $.data.id
+    expected: "${order_id}"
+  - type: json_eq                # 明细数量正确
+    path: $.data.items.0.quantity
+    expected: 3
+  - type: db_eq                  # 数据库：orders 存在
+    sql: "SELECT COUNT(*) c FROM orders WHERE id = ${order_id}"
+    field: c
+    expected: 1
+  - type: db_eq                  # 数据库：订单状态已落库
+    sql: "SELECT status s FROM orders WHERE id = ${order_id}"
+    field: s
+    expected: "PENDING"
+  - type: db_eq                  # 数据库：order_items 明细正确
+    sql: "SELECT quantity FROM order_items WHERE order_id = ${order_id} AND product_id = ${product_id}"
+    field: quantity
+    expected: 3
+  - type: db_eq                  # 数据库：明细金额快照正确
+    sql: "SELECT CAST(subtotal AS CHAR) s FROM order_items WHERE order_id = ${order_id}"
+    field: s
+    expected: "150.00"
+  - type: db_eq                  # 数据库：库存 10 - 3 = 7
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 7

@@ -1,0 +1,15 @@
+# AeroTest 环境配置：被测系统 = order_system（真实服务）
+# 用法：AEROTEST_DB_CONFIG 指向本文件后，框架内置 db_eq 断言即按这里的 db 段核对数据库
+base_url: "http://127.0.0.1:8000"     # uvicorn order_system.main:app 的地址
+timeout: 10
+retry: 1                              # 只读请求可重试；带 body 的写请求框架不会重放
+headers:
+  Content-Type: "application/json"
+
+# order_system 业务库（本地开发库，密码与 order_system/db.py 默认值一致）
+db:
+  host: "127.0.0.1"
+  port: 3306
+  user: "root"
+  password: "123456"
+  database: "order_system"

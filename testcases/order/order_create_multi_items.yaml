@@ -1,0 +1,55 @@
+name: 创建订单-多商品订单
+# 目的：多商品场景，验证总金额累加与多条明细落库
+setup:
+  - template: user
+    var: user_id
+  - template: product            # 10.00 * 2 = 20.00
+    var: product_a
+    price: 10.00
+    stock: 5
+    status: ON_SALE
+  - template: product            # 20.50 * 1 = 20.50
+    var: product_b
+    price: 20.50
+    stock: 5
+    status: ON_SALE
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items:
+      - product_id: "${product_a}"
+        quantity: 2
+      - product_id: "${product_b}"
+        quantity: 1
+extract:
+  order_id: $.data.id
+assertions:
+  - type: status_eq
+    expected: 200
+  - type: json_eq
+    path: $.code
+    expected: 0
+  - type: json_eq                # 总金额 = 20.00 + 20.50
+    path: $.data.total_amount
+    expected: 40.5
+  - type: json_eq                # 明细条数
+    path: $.data.items.1.product_id
+    expected: "${product_b}"
+  - type: db_eq                  # 数据库：总金额 DECIMAL 精确落库（转字符比较避免浮点误差）
+    sql: "SELECT CAST(total_amount AS CHAR) t FROM orders WHERE id = ${order_id}"
+    field: t
+    expected: "40.50"
+  - type: db_eq                  # 数据库：两条订单明细
+    sql: "SELECT COUNT(*) c FROM order_items WHERE order_id = ${order_id}"
+    field: c
+    expected: 2
+  - type: db_eq
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_a}"
+    field: stock
+    expected: 3
+  - type: db_eq
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_b}"
+    field: stock
+    expected: 4

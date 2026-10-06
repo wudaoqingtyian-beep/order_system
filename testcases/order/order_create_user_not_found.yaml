@@ -1,0 +1,36 @@
+name: 创建订单-用户不存在
+# 目的：下单用户不存在时返回 1001，且不产生订单、不动用已生成商品的库存
+# 说明：user_id 用 params 传入一个必然不存在的值（场景本身要的就是「不存在的用户」）
+setup:
+  - template: product
+    var: product_id
+    price: 30.00
+    stock: 5
+    status: ON_SALE
+params:
+  - user_id: 99999999
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items:
+      - product_id: "${product_id}"
+        quantity: 1
+assertions:
+  - type: status_eq
+    expected: 400
+  - type: json_eq
+    path: $.code
+    expected: 1001
+  - type: json_eq
+    path: $.message
+    expected: 用户不存在
+  - type: db_eq
+    sql: "SELECT COUNT(*) c FROM orders WHERE user_id = ${user_id}"
+    field: c
+    expected: 0
+  - type: db_eq
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 5

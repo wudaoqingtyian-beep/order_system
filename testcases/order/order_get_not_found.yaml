@@ -1,0 +1,14 @@
+name: 查询订单-订单不存在
+# 目的：查询不存在的订单返回 4001（纯接口校验）
+request:
+  method: GET
+  path: /api/orders/99999999
+assertions:
+  - type: status_eq
+    expected: 400
+  - type: json_eq
+    path: $.code
+    expected: 4001
+  - type: json_eq
+    path: $.message
+    expected: 订单不存在

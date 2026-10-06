@@ -1,0 +1,35 @@
+name: 取消订单-正常取消并恢复库存
+# 目的：前置一个「已下单」订单（数据工厂准备），取消后状态变更且库存恢复
+setup:
+  - template: user
+    var: user_id
+  - template: product
+    var: product_id
+    price: 25.00
+    stock: 10
+    status: ON_SALE
+  - template: order              # 前置订单：用户 + 商品下单 4 件（库存 10 -> 6）
+    user: "${user_id}"
+    product: "${product_id}"
+    quantity: 4
+    var: order_id
+request:
+  method: POST
+  path: /api/orders/${order_id}/cancel
+assertions:
+  - type: status_eq
+    expected: 200
+  - type: json_eq
+    path: $.code
+    expected: 0
+  - type: json_eq                # 接口返回状态已变更
+    path: $.data.status
+    expected: CANCELLED
+  - type: db_eq                  # 数据库：status=CANCELLED
+    sql: "SELECT status s FROM orders WHERE id = ${order_id}"
+    field: s
+    expected: "CANCELLED"
+  - type: db_eq                  # 数据库：库存 6 + 4 = 10（恢复）
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 10

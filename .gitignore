@@ -1,0 +1,14 @@
+# Python 缓存
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 本地环境配置（.env.example 才入库）
+.env
+
+# 运行时产物
+tests/.batches/
+reports/allure-results/
+
+# 个人面试提词材料，不进公开仓库
+docs/interview_guide.md

@@ -1,0 +1,35 @@
+name: 创建订单-商品已下架
+# 目的：下架商品不可购买，返回 2002，且库存不变化、无订单
+setup:
+  - template: user
+    var: user_id
+  - template: product
+    var: product_id
+    price: 30.00
+    stock: 10
+    status: OFF_SHELF           # 场景需要：商品下架
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items:
+      - product_id: "${product_id}"
+        quantity: 1
+assertions:
+  - type: status_eq
+    expected: 400
+  - type: json_eq
+    path: $.code
+    expected: 2002
+  - type: json_eq
+    path: $.message
+    expected: 商品已下架，不可购买
+  - type: db_eq
+    sql: "SELECT COUNT(*) c FROM orders WHERE user_id = ${user_id}"
+    field: c
+    expected: 0
+  - type: db_eq                  # 库存未被动过
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 10

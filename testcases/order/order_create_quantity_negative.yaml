@@ -1,0 +1,35 @@
+name: 创建订单-数量为负数
+# 目的：参数异常（数量 -1）返回 3003，且不扣库存、不建订单
+setup:
+  - template: user
+    var: user_id
+  - template: product
+    var: product_id
+    price: 30.00
+    stock: 10
+    status: ON_SALE
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items:
+      - product_id: "${product_id}"
+        quantity: -1
+assertions:
+  - type: status_eq
+    expected: 400
+  - type: json_eq
+    path: $.code
+    expected: 3003
+  - type: json_eq
+    path: $.message
+    expected: 购买数量必须大于 0
+  - type: db_eq
+    sql: "SELECT COUNT(*) c FROM orders WHERE user_id = ${user_id}"
+    field: c
+    expected: 0
+  - type: db_eq                  # 负数不能让库存反向增加
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 10

@@ -1,0 +1,22 @@
+# order_system 测试数据模板（供 测试数据工厂 项目1 的 core 引擎渲染）
+# 只描述订单测试需要的三个业务对象：用户 / 商品（含库存字段）
+# 说明：output 固定 file —— 数据由本项目的适配层通过业务 API 落库，
+#       不直接写库，避免绕过订单系统本身的业务校验与事务。
+---
+model: user
+count: 1
+output: file
+file_format: json
+fields:
+  username: "test_${random_str(10)}"      # 唯一用户名：前缀 + 随机串
+  password: "${random_str(12)}"           # 随机密码
+---
+model: product
+count: 1
+output: file
+file_format: json
+fields:
+  name: "测试商品-${name}-${random_str(4)}"   # 中文姓名 + 随机串，便于人工识别
+  price: "${decimal(1.00, 999.99)}"          # 随机价格（2 位小数）
+  status: "${enum(ON_SALE, OFF_SHELF)}"      # 上架 / 下架
+  stock: "${int(1, 50)}"                     # 库存数量

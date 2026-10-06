@@ -1,0 +1,37 @@
+name: 取消订单-重复取消
+# 目的：对已取消订单再次取消，返回 4002，且库存不会被二次恢复
+# 前置：数据工厂直接造成「已取消」状态订单（cancel: true）
+setup:
+  - template: user
+    var: user_id
+  - template: product
+    var: product_id
+    price: 20.00
+    stock: 10
+    status: ON_SALE
+  - template: order              # 下单 3 件（库存 10 -> 7）后立即取消（-> 10）
+    user: "${user_id}"
+    product: "${product_id}"
+    quantity: 3
+    cancel: true
+    var: order_id
+request:
+  method: POST
+  path: /api/orders/${order_id}/cancel
+assertions:
+  - type: status_eq
+    expected: 400
+  - type: json_eq
+    path: $.code
+    expected: 4002
+  - type: json_eq
+    path: $.message
+    expected: 订单已取消，不能重复取消
+  - type: db_eq                  # 状态仍为 CANCELLED
+    sql: "SELECT status s FROM orders WHERE id = ${order_id}"
+    field: s
+    expected: "CANCELLED"
+  - type: db_eq                  # 关键：库存停在 10，没有二次增加
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 10

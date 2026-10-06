@@ -1,0 +1,38 @@
+name: 创建订单-库存不足
+# 目的：stock=3 / quantity=5，接口返回库存不足；事务回滚：无订单、库存不变
+setup:
+  - template: user
+    var: user_id
+  - template: product
+    var: product_id
+    price: 30.00
+    stock: 3
+    status: ON_SALE
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items:
+      - product_id: "${product_id}"
+        quantity: 5
+assertions:
+  - type: status_eq
+    expected: 400
+  - type: json_eq                # 3002 库存不足
+    path: $.code
+    expected: 3002
+  - type: json_eq
+    path: $.message
+    expected: 库存不足
+  - type: json_eq                # 失败响应不带业务数据
+    path: $.data
+    expected: null
+  - type: db_eq                  # 数据库：没有任何订单落库
+    sql: "SELECT COUNT(*) c FROM orders WHERE user_id = ${user_id}"
+    field: c
+    expected: 0
+  - type: db_eq                  # 数据库：库存保持 3
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 3

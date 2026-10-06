@@ -1,0 +1,37 @@
+name: 创建订单-库存刚好满足
+# 目的：边界值 stock=10 / quantity=10，下单成功且库存精确归零
+setup:
+  - template: user
+    var: user_id
+  - template: product
+    var: product_id
+    price: 10.00
+    stock: 10
+    status: ON_SALE
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items:
+      - product_id: "${product_id}"
+        quantity: 10
+extract:
+  order_id: $.data.id
+assertions:
+  - type: status_eq
+    expected: 200
+  - type: json_eq
+    path: $.code
+    expected: 0
+  - type: json_eq
+    path: $.data.total_amount
+    expected: 100.0
+  - type: db_eq                  # 边界：库存刚好扣到 0
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 0
+  - type: db_eq                  # 明细单价快照正确
+    sql: "SELECT CAST(price AS CHAR) p FROM order_items WHERE order_id = ${order_id}"
+    field: p
+    expected: "10.00"

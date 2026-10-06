@@ -1,0 +1,32 @@
+name: 数据一致性-下单后接口与数据库库存一致
+# 目的：下单扣库存后，库存查询接口返回的 stock 与数据库 inventory.stock 完全一致
+setup:
+  - template: user
+    var: user_id
+  - template: product
+    var: product_id
+    price: 30.00
+    stock: 10
+    status: ON_SALE
+  - template: order              # 前置订单：下单 3 件（10 -> 7）
+    user: "${user_id}"
+    product: "${product_id}"
+    quantity: 3
+    var: order_id
+request:
+  method: GET
+  path: /api/inventory/${product_id}
+assertions:
+  - type: status_eq
+    expected: 200
+  - type: json_eq                # 接口读数：库存已扣减
+    path: $.data.stock
+    expected: 7
+  - type: db_eq                  # 数据库读数：与接口一致
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 7
+  - type: db_eq                  # 订单状态仍为 PENDING
+    sql: "SELECT status s FROM orders WHERE id = ${order_id}"
+    field: s
+    expected: "PENDING"

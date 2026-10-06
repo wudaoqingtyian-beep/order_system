@@ -1,0 +1,17 @@
+name: 取消订单-订单不存在
+# 目的：取消不存在的订单返回 4001（无需造数，纯接口校验）
+request:
+  method: POST
+  path: /api/orders/99999999/cancel
+assertions:
+  - type: status_eq
+    expected: 400
+  - type: json_eq
+    path: $.code
+    expected: 4001
+  - type: json_eq
+    path: $.message
+    expected: 订单不存在
+  - type: json_eq
+    path: $.data
+    expected: null

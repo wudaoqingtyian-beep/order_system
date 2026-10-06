@@ -1,0 +1,24 @@
+name: 创建订单-商品明细为空
+# 目的：items 为空列表时请求体校验失败，返回 9001，且不产生订单
+setup:
+  - template: user
+    var: user_id
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items: []
+assertions:
+  - type: status_eq              # 请求体校验失败
+    expected: 422
+  - type: json_eq
+    path: $.code
+    expected: 9001
+  - type: json_eq
+    path: $.message
+    expected: 请求参数不合法
+  - type: db_eq
+    sql: "SELECT COUNT(*) c FROM orders WHERE user_id = ${user_id}"
+    field: c
+    expected: 0

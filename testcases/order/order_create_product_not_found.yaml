@@ -1,0 +1,30 @@
+name: 创建订单-商品不存在
+# 目的：商品 ID 不存在时返回 2001，且不产生订单
+# 说明：product_id 用 params 传入一个必然不存在的值（该场景本身要的就是「不存在的商品」），
+#       用户仍由数据工厂生成，避免依赖库里已有数据。
+setup:
+  - template: user
+    var: user_id
+params:
+  - product_id: 99999999
+request:
+  method: POST
+  path: /api/orders
+  json:
+    user_id: "${user_id}"
+    items:
+      - product_id: "${product_id}"
+        quantity: 1
+assertions:
+  - type: status_eq
+    expected: 400
+  - type: json_eq
+    path: $.code
+    expected: 2001
+  - type: json_eq
+    path: $.message
+    expected: 商品不存在
+  - type: db_eq
+    sql: "SELECT COUNT(*) c FROM orders WHERE user_id = ${user_id}"
+    field: c
+    expected: 0

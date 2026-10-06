@@ -1,0 +1,33 @@
+name: 数据一致性-取消后接口与数据库库存一致
+# 目的：取消订单恢复库存后，库存查询接口返回的 stock 与数据库 inventory.stock 完全一致
+setup:
+  - template: user
+    var: user_id
+  - template: product
+    var: product_id
+    price: 30.00
+    stock: 10
+    status: ON_SALE
+  - template: order              # 前置：下单 3 件后取消（10 -> 7 -> 10）
+    user: "${user_id}"
+    product: "${product_id}"
+    quantity: 3
+    cancel: true
+    var: order_id
+request:
+  method: GET
+  path: /api/inventory/${product_id}
+assertions:
+  - type: status_eq
+    expected: 200
+  - type: json_eq                # 接口读数：库存已恢复
+    path: $.data.stock
+    expected: 10
+  - type: db_eq                  # 数据库读数：与接口一致
+    sql: "SELECT stock FROM inventory WHERE product_id = ${product_id}"
+    field: stock
+    expected: 10
+  - type: db_eq                  # 订单状态已落库为 CANCELLED
+    sql: "SELECT status s FROM orders WHERE id = ${order_id}"
+    field: s
+    expected: "CANCELLED"
